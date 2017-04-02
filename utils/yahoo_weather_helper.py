@@ -18,11 +18,16 @@ class YahooWeatherHelper(object):
 
     def get_forecast(self, coords):
         weather_data = self._get_weather(coords, include_forecase=True)
+        if weather_data is None or 'forecast' not in weather_data:
+            return None
         return weather_data['forecast']
 
     def get_weather(self, coords, include_forecast=False):
         weather_data = self._get_weather(coords)
-        if not include_forecast:
+        if weather_data is None:
+            return None
+
+        if not include_forecast and 'forecast' in weather_data:
             weather_data.pop('forecast', None)
         return weather_data
 

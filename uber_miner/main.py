@@ -77,7 +77,7 @@ def _get_es_connection(config):
 
 def _fetch_data_for_coords(start_coords, end_coords, config):
     try:
-        logger.info("Received coords: ({}, {}), ({}, {})",format(start_coords.lat, start_coords.long, end_coords.lat, end_coords.long))
+        logger.info("Received coords: ({}, {}), ({}, {})".format(start_coords.lat, start_coords.long, end_coords.lat, end_coords.long))
         timestamp = datetime.datetime.utcnow().isoformat()
 
         weather_data = _get_yahoo_weather_helper(config).get_weather(start_coords)
