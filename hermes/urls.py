@@ -20,5 +20,9 @@ from api import views as api_views
 
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
-    url(r'^test/', api_views.test_page),
+    url(r'^api/test/', api_views.test_page),
+
+    url(r'^api/watch_coords/', api_views.create_tracker),
+    url(r'^api/get_tracked/', api_views.get_tracked),
+    url(r'^api/get_graph/', api_views.get_graph),
 ]

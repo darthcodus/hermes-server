@@ -14,9 +14,13 @@ class TrackedCoordinatePairs(models.Model):
     to_longitude = models.FloatField()
     to_latitude = models.FloatField()
 
-    def create_tracker(self, from_latitude, from_longitude, to_latitude, to_longitude):
-        id = '{},{},{},{}'.format(from_latitude, from_longitude,
-                                  to_latitude, to_longitude)
+    def generate_id(self, from_latitude, from_longitude, to_latitude, to_longitude):
+        id = '{},{},{},{}'.format(from_latitude, from_longitude,to_latitude, to_longitude)
+        return id
+
+    def create_tracker(self, from_latitude, from_longitude, to_latitude, to_longitude, id=None):
+        if id is None:
+            id = self.generate_id(from_latitude, from_longitude, to_latitude, to_longitude)
         self.objects.create(id=id, from_latitude=from_latitude, from_longitude=from_longitude,
                             to_longitude=to_longitude, to_latitude=to_latitude)
     #class Meta:

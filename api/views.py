@@ -1,4 +1,5 @@
 import json
+import os
 import tempfile
 import time
 
@@ -13,6 +14,9 @@ from django.shortcuts import render
 from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.decorators import api_view
+from rest_framework.response import Response
+
+from rest_framework.serializers import ModelSerializer
 
 import hermes.settings as settings
 from .models import *
@@ -22,18 +26,27 @@ from .models import *
 @api_view(['PUT'])
 #@permission_classes((permissions.AllowAny,))
 def create_tracker(request):
-    jsonobj = request.data
+    data = request.data
 
-    from_longitude = jsonobj['from_longitude']
-    from_latitude = jsonobj['from_latitude']
+    from_longitude = data['from_longitude']
+    from_latitude = data['from_latitude']
 
-    to_longitude = jsonobj['to_longitude']
-    to_latitude = jsonobj['to_latitude']
+    to_longitude = data['to_longitude']
+    to_latitude = data['to_latitude']
 
-    tpair = TrackedCoordinatePairs.create_tracker(from_latitude=from_latitude, from_longitude=from_longitude,
-                                                         to_latitude=to_latitude, to_longitude=to_longitude)
-    tpair.save()
+    id = TrackedCoordinatePairs.generate_id(from_latitude=from_latitude, from_longitude=from_longitude,
+                                          to_latitude=to_latitude, to_longitude=to_longitude)
+    if not TrackedCoordinatePairs.objects.filter(id=id).exists():
+        tpair = TrackedCoordinatePairs.create_tracker(from_latitude=from_latitude, from_longitude=from_longitude,
+                                                      to_latitude=to_latitude, to_longitude=to_longitude)
+        tpair.save()
     return HttpResponse(json.dumps({'success'}), content_type='application/json')
+
+
+@api_view(['GET'])
+def get_tracked(request):
+    serializer = ModelSerializer(TrackedCoordinatePairs.objects.all(), many=True)
+    return Response(serializer.data)
 
 
 @api_view(['GET'])
