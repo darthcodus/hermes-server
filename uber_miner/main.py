@@ -1,3 +1,4 @@
+import datetime
 import time
 
 from utils.elastic_search_handler import *
@@ -8,6 +9,7 @@ from utils.coords import *
 logger = logging.getLogger(__name__)
 
 #class ExpiringCacheApiHelper(object):
+
 
 def _get_uber_product_details_list(start_coords, end_coords, uber_helper):
     time_estimates = uber_helper.get_pickup_time_estimates(start_coords)
@@ -55,7 +57,7 @@ def main():
     uber_client_secret = config["uber_api"]["client_secret"]
 
     try:
-        timestamp = int(time.time())
+        timestamp = datetime.datetime.utcnow().isoformat()
 
         yahoo_client_id = config["yahoo_weather_api"]["client_id"]
         yahoo_client_secret = config["yahoo_weather_api"]["client_secret"]
