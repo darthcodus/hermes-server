@@ -113,7 +113,7 @@ def _gen_image(start_lat, start_long, end_lat, end_long):
         }
       }
     }
-    config = json.loads(os.path.join('..', 'uber_miner', 'config.json'))
+    config = json.loads(os.path.join('uber_miner', 'config.json'))
 
     hosts = config['elastic_search']['hosts']
     password = config['elastic_search']['password']
@@ -158,8 +158,10 @@ def _gen_image(start_lat, start_long, end_lat, end_long):
 @api_view(['GET'])
 #@permission_classes((permissions.AllowAny,))
 def get_graph(request):
-    import time
+    print(os.getcwd())
     data = request.data
-    file_name = _gen_image(data['start_latitude'], data['start_longitude'], data['end_latitude'], data['end_longitude'])
+    data = param_dict = request.query_params
+    file_name = _gen_image(data.get('start_latitude'), data.get('start_longitude'),
+                           data.get('end_latitude'), data.get('end_longitude'))
     with open(file_name, "rb") as f:
-        return HttpResponse(f.read(), content_type="image/jpeg")
+        return HttpResponse(f.read(), content_type="image/png")
