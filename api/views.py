@@ -24,7 +24,6 @@ import hermes.settings as settings
 from .models import *
 
 
-
 @api_view(['PUT'])
 #@permission_classes((permissions.AllowAny,))
 def create_tracker(request):
@@ -36,13 +35,17 @@ def create_tracker(request):
     to_longitude = data['to_longitude']
     to_latitude = data['to_latitude']
 
+    _start_tracking_if_not_tracked(from_latitude, from_longitude, to_latitude, to_longitude)
+    return HttpResponse(json.dumps({'success'}), content_type='application/json')
+
+
+def _start_tracking_if_not_tracked(from_latitude, from_longitude, to_latitude, to_longitude):
     id = TrackedCoordinatePairs.generate_id(from_latitude=from_latitude, from_longitude=from_longitude,
                                           to_latitude=to_latitude, to_longitude=to_longitude)
     if not TrackedCoordinatePairs.objects.filter(id=id).exists():
         tpair = TrackedCoordinatePairs.create_tracker(from_latitude=from_latitude, from_longitude=from_longitude,
                                                       to_latitude=to_latitude, to_longitude=to_longitude)
         tpair.save()
-    return HttpResponse(json.dumps({'success'}), content_type='application/json')
 
 
 @api_view(['GET'])
@@ -160,10 +163,17 @@ def _gen_image(start_lat, start_long, end_lat, end_long):
 @api_view(['GET'])
 #@permission_classes((permissions.AllowAny,))
 def get_graph(request):
-    print(os.getcwd())
     data = request.data
+
+    from_longitude = data.get('start_latitude')
+    from_latitude = data.get('start_longitude')
+
+    to_longitude = data.get('to_longitude')
+    to_latitude = data.get('to_latitude')
+
+    _start_tracking_if_not_tracked(from_latitude, from_longitude, to_latitude, to_longitude)
+
     data = param_dict = request.query_params
-    file_name = _gen_image(data.get('start_latitude'), data.get('start_longitude'),
-                           data.get('end_latitude'), data.get('end_longitude'))
+    file_name = _gen_image(from_latitude, from_longitude, to_latitude, to_longitude)
     with open(file_name, "rb") as f:
         return HttpResponse(f.read(), content_type="image/png")
