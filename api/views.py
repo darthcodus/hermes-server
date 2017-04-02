@@ -29,11 +29,11 @@ from .models import *
 def create_tracker(request):
     data = request.data
 
-    from_longitude = data['from_longitude']
-    from_latitude = data['from_latitude']
+    from_longitude = data['start_longitude']
+    from_latitude = data['start_latitude']
 
-    to_longitude = data['to_longitude']
-    to_latitude = data['to_latitude']
+    to_longitude = data['end_longitude']
+    to_latitude = data['end_latitude']
 
     _start_tracking_if_not_tracked(from_latitude, from_longitude, to_latitude, to_longitude)
     return HttpResponse(json.dumps({'success'}), content_type='application/json')
@@ -50,8 +50,8 @@ def _start_tracking_if_not_tracked(from_latitude, from_longitude, to_latitude, t
 
 @api_view(['GET'])
 def get_tracked(request):
-    serializer = ModelSerializer(TrackedCoordinatePairs.objects.all(), many=True)
-    return Response(serializer.data)
+    serializer = TrackedCoordsSerializer(TrackedCoordinatePairs.objects.all(), many=True)
+    return HttpResponse(serializer.data)
 
 
 @api_view(['GET'])
@@ -163,15 +163,19 @@ def _gen_image(start_lat, start_long, end_lat, end_long):
 @api_view(['GET'])
 #@permission_classes((permissions.AllowAny,))
 def get_graph(request):
-    data = request.data
+    data = request.query_params
 
     from_longitude = data.get('start_latitude')
     from_latitude = data.get('start_longitude')
 
-    to_longitude = data.get('to_longitude')
-    to_latitude = data.get('to_latitude')
+    to_longitude = data.get('end_longitude')
+    to_latitude = data.get('end_latitude')
 
-    _start_tracking_if_not_tracked(from_latitude, from_longitude, to_latitude, to_longitude)
+    print('{},{}; {};{}'.format(from_latitude, from_longitude, to_latitude, to_longitude))
+    try:
+        _start_tracking_if_not_tracked(from_latitude, from_longitude, to_latitude, to_longitude)
+    except Exception as e:
+        print(e.__dict__)
 
     data = param_dict = request.query_params
     file_name = _gen_image(from_latitude, from_longitude, to_latitude, to_longitude)
