@@ -4,8 +4,10 @@ import tempfile
 import time
 
 from elasticsearch import Elasticsearch
-import matplotlib.pyplot as plt
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 from requests.auth import HTTPDigestAuth
 import requests
 
