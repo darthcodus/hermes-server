@@ -77,9 +77,13 @@ def _get_es_connection(config):
 
 def _fetch_data_for_coords(start_coords, end_coords, config):
     try:
+        logger.info("Received coords: ({}, {}), ({}, {})",format(start_coords.lat, start_coords.long, end_coords.lat, end_coords.long))
         timestamp = datetime.datetime.utcnow().isoformat()
 
         weather_data = _get_yahoo_weather_helper(config).get_weather(start_coords)
+        if weather_data is None:
+            logger.error("Received None weather data, skipping fetch for coords.")
+            return
 
         uber_helper = _get_uber_helper(config)
         uber_details_list = _get_uber_product_details_list(start_coords, end_coords, uber_helper)
@@ -92,6 +96,7 @@ def _fetch_data_for_coords(start_coords, end_coords, config):
                                                        es_obj_list=uber_details_list,
                                                        doc_type=UberProduct.DOC_TYPE
                                                        )
+        logger.info("Successfully pushed coords into elasticsearch index")
     except Exception as e:
         logger.error("An exception occurred: {}".format(e))
         raise
@@ -120,6 +125,7 @@ def _setup_logging(verbose):
 
 def main():
     response = requests.get('http://serv1.anmolahuja.com/api/get_tracked/')
+    logger.debug("Received: {}".format(response.text))
     obj = json.loads(response.text)
     coords_pairs_list = [] #[(apt_coords, symc_coords), (apt_coords, symc_coords)]
     for dic in obj:
@@ -127,6 +133,7 @@ def main():
         from_longitude = dic['from_longitude']
         to_latitude = dic['to_latitude']
         to_longitude = dic['to_longitude']
+        print('{},{}; {}, {}'.format(from_latitude, from_longitude, to_latitude, to_longitude))
         coords_pairs_list.append( (Coords(from_latitude, from_longitude), Coords(to_latitude, to_longitude)) )
     #print('{}'.format(coords_pairs_list))
 

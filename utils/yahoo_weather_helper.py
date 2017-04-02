@@ -1,7 +1,12 @@
 import json
+import logging
 import urllib
 
 import requests
+
+
+logger = logging.getLogger(__name__)
+
 
 class YahooWeatherHelper(object):
     def __init__(self, client_id, client_secret):
@@ -11,8 +16,8 @@ class YahooWeatherHelper(object):
         #self.coords_to_weather_cache = {} # map from coords to tuple (timestamp_ms, weather_data)
         #self.cache_expiry_in_milliseconds = {}
 
-    def get_forecase(self, coords):
-        weather_data = self._get_weather()
+    def get_forecast(self, coords):
+        weather_data = self._get_weather(coords, include_forecase=True)
         return weather_data['forecast']
 
     def get_weather(self, coords, include_forecast=False):
@@ -22,20 +27,28 @@ class YahooWeatherHelper(object):
         return weather_data
 
     def _get_weather(self, coords):
+        logger.debug('Received coords: {}, {}'.format(coords.lat, coords.long))
+
         yql_query = 'select * from weather.forecast where woeid in '
         yql_query += '(SELECT woeid FROM geo.places WHERE text="({},{})") and u="c"'.format(coords.lat, coords.long)
 
         yql_url = self._generate_yql_url(yql_query)
 
         response = requests.get(yql_url)
+        logger.debug('Response: {}'.format(response))
+        logger.debug('Response text: {}'.format(response.text))
         if response.status_code != requests.codes.ok:
             return None
 
-        data = json.loads(response.text)
-        weather_data = data['query']['results']
-        return weather_data['channel']
+        try:
+            data = json.loads(response.text)
+            weather_data = data['query']['results']
+            return weather_data['channel']
+        except Exception as e:
+            logger.error(e)
+            return None
 
     def _generate_yql_url(self, yql_query):
-        return self.base_url + urllib.parse.urlencode({'q':yql_query}) + "&format=json"
-
-
+        yql_url = self.base_url + urllib.parse.urlencode({'q':yql_query}) + "&format=json"
+        logging.debug("YQL URL: {}".format(yql_url))
+        return yql_url
