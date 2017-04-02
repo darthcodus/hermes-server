@@ -1,6 +1,7 @@
 import datetime
 import time
 
+import utils
 from utils.elastic_search_handler import *
 from utils.uber_helper import *
 from utils.yahoo_weather_helper import *
@@ -45,42 +46,47 @@ def _generate_context_data(weather_data, start_coords, end_coords):
     return  context_data
 
 
-def main():
-    apt_coords = Coords(34.024314, -118.297941)
-    symc_coords = Coords(33.988031, -118.388916)
-
-    with open("config.json") as f:
-        config = json.load(f, encoding='utf-8')
-
+def _get_uber_helper(config):
     uber_access_token = config["uber_api"]["debug_access_token"]
     uber_server_token = config["uber_api"]["server_token"]
     uber_client_id = config["uber_api"]["client_id"]
     uber_client_secret = config["uber_api"]["client_secret"]
+    uber_helper = UberHelper(uber_server_token, OAuth2Credential(access_token=uber_access_token,
+                                                                 client_id=uber_client_id,
+                                                                 client_secret=uber_client_secret,
+                                                                 expires_in_seconds=999999,
+                                                                 scopes={'ride_widgets', 'request'},
+                                                                 grant_type=''
+                                                                 ))
+    return uber_helper
 
+
+def _get_yahoo_weather_helper(config):
+    yahoo_client_id = config["yahoo_weather_api"]["client_id"]
+    yahoo_client_secret = config["yahoo_weather_api"]["client_secret"]
+    return YahooWeatherHelper(yahoo_client_id, yahoo_client_secret)
+
+
+def _get_es_connection(config):
+    hosts = config['elastic_search']['hosts']
+    password = config['elastic_search']['password']
+    user_name = config['elastic_search']['user_name']
+    port = config['elastic_search']['port']
+    return ElasticSearchConnection(hosts=hosts, password=password, user_name=user_name, port=port)
+
+
+def _fetch_data_for_coords(start_coords, end_coords, config):
     try:
         timestamp = datetime.datetime.utcnow().isoformat()
 
-        yahoo_client_id = config["yahoo_weather_api"]["client_id"]
-        yahoo_client_secret = config["yahoo_weather_api"]["client_secret"]
-        weather_data = YahooWeatherHelper(yahoo_client_id, yahoo_client_secret).get_weather(apt_coords)
+        weather_data = _get_yahoo_weather_helper(config).get_weather(start_coords)
 
-        uber_helper = UberHelper(uber_server_token, OAuth2Credential(access_token=uber_access_token,
-                                                                     client_id=uber_client_id,
-                                                                     client_secret=uber_client_secret,
-                                                                     expires_in_seconds=999999,
-                                                                     scopes={'ride_widgets', 'request'},
-                                                                     grant_type=''
-                                                                     ))
-        uber_details_list = _get_uber_product_details_list(apt_coords, symc_coords, uber_helper)
+        uber_helper = _get_uber_helper(config)
+        uber_details_list = _get_uber_product_details_list(start_coords, end_coords, uber_helper)
 
-        context_data = _generate_context_data(weather_data, apt_coords, symc_coords)
+        context_data = _generate_context_data(weather_data, start_coords, end_coords)
 
-        es_connection = ElasticSearchConnection(hosts=config['elastic_search']['hosts'],
-                                                password=config['elastic_search']['password'],
-                                                user_name=config['elastic_search']['user_name'],
-                                                port=config['elastic_search']['port'])
-
-        IndicesHandler(es_connection, 'uber_prices').create_index_if_not_exist()
+        es_connection = _get_es_connection(config)
         ElasticSearchHandler(es_connection, 'uber_prices').push_group(parent_data={'timestamp': timestamp, 'context': context_data},
                                                        parent_doc_type='time_instant_for_coords',
                                                        es_obj_list=uber_details_list,
@@ -90,4 +96,47 @@ def main():
         logger.error("An exception occurred: {}".format(e))
         raise
 
-main()
+
+def _setup_logging(verbose):
+    module_name_to_logger_map = {'main': logging.getLogger(__name__), 'utils': utils.logger}
+
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.DEBUG if verbose else logging.INFO)
+    ch.setFormatter(formatter)
+
+    for module_name, module_logger in module_name_to_logger_map.items():
+        module_logger.propagate = False
+        module_logger.setLevel(logging.DEBUG)
+
+        fh = logging.FileHandler('uber_miner_{}.log'.format(module_name))
+        fh.setFormatter(formatter)
+        fh.setLevel(logging.DEBUG)
+
+        module_logger.addHandler(ch)
+        module_logger.addHandler(fh)
+
+
+def main():
+    apt_coords = Coords(34.024314, -118.297941)
+    symc_coords = Coords(33.988031, -118.388916)
+
+    with open("config.json") as f:
+        config = json.load(f, encoding='utf-8')
+
+    IndicesHandler(_get_es_connection(config), 'uber_prices').create_index_if_not_exist()
+
+    coords_pairs_list = [(apt_coords, symc_coords), (apt_coords, symc_coords)]
+    while True:
+        for pairs in coords_pairs_list:
+            _fetch_data_for_coords(pairs[0], pairs[1], config)
+        time.sleep(120)
+
+
+if __name__ == "__main__":
+    _setup_logging(verbose=True)
+    try:
+        main()
+    except Exception as e:
+        logger.exception(e)
