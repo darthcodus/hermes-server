@@ -19,11 +19,12 @@ class UberProduct(ElasticSearchDoc):
         assert all(key in kwargs for key in required_keys)
         for key, val in kwargs.items():
             setattr(self, key, val)
+        # TOOD: convert to USD if not in USD
 
     def elastic_search_representation(self):
         return self.uber_attrs
 
-    def es_doc_type(self):
+    def doc_type(self):
         return UberProduct.DOC_TYPE
 
 
