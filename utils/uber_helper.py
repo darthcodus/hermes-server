@@ -16,6 +16,7 @@ class UberProduct(ElasticSearchDoc):
     def __init__(self, **kwargs):
         required_keys = ('product_id',)
         self.uber_attrs = kwargs
+        kwargs['avg_estimate'] = (kwargs['low_estimate'] + kwargs['high_estimate'])/2
         assert all(key in kwargs for key in required_keys)
         for key, val in kwargs.items():
             setattr(self, key, val)
