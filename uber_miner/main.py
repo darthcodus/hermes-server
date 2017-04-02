@@ -119,15 +119,25 @@ def _setup_logging(verbose):
 
 
 def main():
-    apt_coords = Coords(34.024314, -118.297941)
-    symc_coords = Coords(33.988031, -118.388916)
+    response = requests.get('http://serv1.anmolahuja.com/api/get_tracked/')
+    obj = json.loads(response.text)
+    coords_pairs_list = [] #[(apt_coords, symc_coords), (apt_coords, symc_coords)]
+    for dic in obj:
+        from_latitude = dic['from_latitude']
+        from_longitude = dic['from_longitude']
+        to_latitude = dic['to_latitude']
+        to_longitude = dic['to_longitude']
+        coords_pairs_list.append( (Coords(from_latitude, from_longitude), Coords(to_latitude, to_longitude)) )
+    #print('{}'.format(coords_pairs_list))
+
+    #apt_coords = Coords(34.024314, -118.297941)
+    #symc_coords = Coords(33.988031, -118.388916)
 
     with open("config.json") as f:
         config = json.load(f, encoding='utf-8')
 
     IndicesHandler(_get_es_connection(config), 'uber_prices').create_index_if_not_exist()
 
-    coords_pairs_list = [(apt_coords, symc_coords), (apt_coords, symc_coords)]
     while True:
         for pairs in coords_pairs_list:
             _fetch_data_for_coords(pairs[0], pairs[1], config)
