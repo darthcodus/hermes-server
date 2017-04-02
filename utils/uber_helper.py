@@ -42,19 +42,18 @@ class UberHelper(object):
             self._user_client = UberRidesClient(session=Session(oauth2credential=oauth2credential))
 
     def get_products(self, coords):
+        logger.debug("Fetching products")
         response = self._client(False).get_products(latitude=coords.lat, longitude=coords.long)
-        products = response.json.get('products')
-        return products
+        return self._validate_response_and_get_json(response)
 
     def get_pickup_time_estimates(self, start_coords, product_id=None):
+        logger.debug("Fetching pickup time estimates")
         response = self._client(False).get_pickup_time_estimates(
             start_latitude=start_coords.lat,
             start_longitude=start_coords.long,
             product_id=product_id
         )
-        if response.status_code != requests.codes.ok:
-            return None
-        return response.json
+        return self._validate_response_and_get_json(response)
 
     def get_price_estimate_for_product(self, start_coords, end_coords, product_id, seat_count=1):
         """ Gets upfront fares if available.
@@ -67,6 +66,7 @@ class UberHelper(object):
 
         Returns:
         """
+        logger.debug("Fetching price estimates")
         response = self._client(True).estimate_ride(
             product_id=product_id,
             start_latitude=start_coords.lat,
@@ -75,9 +75,8 @@ class UberHelper(object):
             end_longitude=end_coords.long,
             seat_count=seat_count
         )
-        if response.status_code != requests.codes.ok:
-            return None
-        return response.json
+        logger.debug("Complete response: {}".format(response))
+        return self._validate_response_and_get_json(response)
 
 
     def get_price_estimates(self, start_coords, end_coords, seat_count=1):
@@ -90,8 +89,16 @@ class UberHelper(object):
             end_longitude=end_coords.long,
             seat_count=seat_count
         )
+        return self._validate_response_and_get_json(response)
+
+    @staticmethod
+    def _validate_response_and_get_json(response):
+        logger.debug("Validating response. Complete response: {}".format(response.__dict__))
         if response.status_code != requests.codes.ok:
+            logger.error("An error occurred")
+            logger.error("Status code: {}".format(response.status_code))
             return None
+        logger.debug("Validated. Returning response json: {}".format(response.json))
         return response.json
 
     def request_ride(self, start_coords, end_coords):
