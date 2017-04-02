@@ -25,7 +25,7 @@ SECRET_KEY = 'tdse7^zs5a_78g8+amhy7rzy!d3m#kl%158s*jzn5%yq7zzi+2'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['serv1.anmolahuja.com']
 
 
 # Application definition
@@ -138,3 +138,4 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.AllowAny',
     )
 }
+
