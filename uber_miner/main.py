@@ -32,7 +32,8 @@ def _get_uber_product_details_list(start_coords, end_coords, uber_helper):
 
         # needs request scope, skipping for now
         # price_estimate = uber_helper.get_price_estimate_for_product(apt_coords, symc_coords, product.id)
-    return product_id_to_product_map
+    return product_id_to_product_map.values()
+
 
 def _generate_context_data(weather_data, start_coords, end_coords):
     context_data = {}
@@ -74,13 +75,16 @@ def main():
 
         context_data = _generate_context_data(weather_data, apt_coords, symc_coords)
 
-        print(context_data)
-        es_connection = ElasticSearchConnection(hosts=['http://127.0.0.1:9200/'])
-        IndicesHandler(es_connection).create_index_if_not_exist('uber_prices')
-        ElasticSearchHandler(es_connection).push_group(parent_data={'timestamp': timestamp, 'context': context_data},
+        es_connection = ElasticSearchConnection(hosts=config['elastic_search']['hosts'],
+                                                password=config['elastic_search']['password'],
+                                                user_name=config['elastic_search']['user_name'],
+                                                port=config['elastic_search']['port'])
+
+        IndicesHandler(es_connection, 'uber_prices').create_index_if_not_exist()
+        ElasticSearchHandler(es_connection, 'uber_prices').push_group(parent_data={'timestamp': timestamp, 'context': context_data},
                                                        parent_doc_type='time_instant_for_coords',
                                                        es_obj_list=uber_details_list,
-                                                       doc_type=uber_details_list[0].doc_type()
+                                                       doc_type=UberProduct.DOC_TYPE
                                                        )
     except Exception as e:
         logger.error("An exception occurred: {}".format(e))
