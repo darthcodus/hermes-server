@@ -13,15 +13,25 @@ class ElasticSearchHandler(object):
         self.conn = es_connection
 
     def push_group(self, parent_data, parent_doc_type, es_obj_list, doc_type, refresh=True):
+        """ Assumes objects do NOT have an id."""
         parent_doc_id = self.push(parent_data, doc_type=parent_doc_type, refresh=refresh)
         if parent_doc_id is None:
             raise RuntimeError("Failed to create parent doc")
+        es_repr_list = []
         for es_obj in es_obj_list:
-            es_obj.update(parent_data)
-            es_obj['parent_id'] = parent_doc_id
-        self.push_bulk(es_obj_list, doc_type, refresh)
+            doc_type, es_repr = self._validate_doc_and_get_type_and_repr(es_obj, doc_type)
+            es_repr.update(parent_data)
+            es_repr['parent_id'] = parent_doc_id
+            es_repr_list.append(es_repr)
+        self.push_bulk(es_repr_list, doc_type, refresh)
 
     def push_bulk(self, obj_list, doc_type=None, refresh=True):
+        """ Assumes objects do NOT have an id.
+        :param obj_list:
+        :param doc_type:
+        :param refresh:
+        :return:
+        """
         assert isinstance(obj_list, collections.Sequence)
         assert len(obj_list) > 0
 
@@ -33,7 +43,7 @@ class ElasticSearchHandler(object):
 
             doc_type, es_repr = self._validate_doc_and_get_type_and_repr(obj, doc_type)
             metadata = {
-                '_op_type': 'create',
+                '_op_type': 'index',
                 "_index": self.index_name,
                 "_type": doc_type,
             }
@@ -45,16 +55,17 @@ class ElasticSearchHandler(object):
                                              stats_only=True, refresh=u'true' if refresh else u'false')
 
     def push(self, es_obj, doc_type=None, refresh=True):
-        """ Push a single ElasticSearchObject to index.
+        """ Push a single ElasticSearchObject to index. Assumes objects do NOT have an id.
 
         Returns:
             id of the created document if successful, None otherwise
         """
         doc_type, es_repr = self._validate_doc_and_get_type_and_repr(es_obj, doc_type)
-        response = self.conn.elastic_search_client.create(index=self.index_name, doc_type=doc_type,
-                                           body=es_repr,
-                                           refresh=u'true' if refresh else u'false')
-        if u'_id' not in response:
+        response = self.conn.elastic_search_client.index(index=self.index_name, doc_type=doc_type,
+                                           body=es_repr, refresh=u'true' if refresh else u'false', id=None)
+        logger.debug("Response: {}".format(response))
+        print(response)
+        if '_id' not in response:
             logger.error("Could not create object")
             logger.error("Object: {}".format(es_obj))
             logger.error("Es_repr: {}".format(es_repr))
@@ -65,8 +76,8 @@ class ElasticSearchHandler(object):
 
     def _validate_doc_and_get_type_and_repr(self, es_obj, doc_type):
         if isinstance(es_obj, ElasticSearchDoc):
-            assert doc_type is None or doc_type == es_obj[doc_type]
-            return es_obj[doc_type], es_obj.elastic_search_representation()
+            assert doc_type is None or doc_type == es_obj.doc_type()
+            return es_obj.doc_type(), es_obj.elastic_search_representation()
 
         assert isinstance(es_obj, (collections.Sequence, collections.Mapping))
         assert doc_type is not None
@@ -74,8 +85,9 @@ class ElasticSearchHandler(object):
 
 
 class IndicesHandler(object):
-    def __init__(self, index_name, elastic_search_connection):
-        self.indices_client = helpers.IndicesClient(elastic_search_connection.elastic_search_client)
+    def __init__(self, elastic_search_connection, index_name):
+        self.index_name = index_name
+        self.indices_client = client.IndicesClient(elastic_search_connection.elastic_search_client)
 
     def index_exists(self):
         return self.indices_client.exists(self.index_name)
@@ -107,10 +119,13 @@ class IndicesHandler(object):
 
 
 class ElasticSearchConnection:
-    def __init__(self, hosts, connection_class=RequestsHttpConnection):
+    def __init__(self, hosts, port, user_name, password, connection_class=RequestsHttpConnection):
+        """ Uses http for now.
+        """
         self.hosts = hosts
         self.connection_class = connection_class
         self.elastic_search_client = Elasticsearch(self.hosts, connection_class=self.connection_class)
+        self.elastic_search_client = Elasticsearch(hosts, http_auth=(user_name, password), port=port)
 
 
 class ElasticSearchDoc(object):
