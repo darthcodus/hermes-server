@@ -51,7 +51,7 @@ def _start_tracking_if_not_tracked(from_latitude, from_longitude, to_latitude, t
 @api_view(['GET'])
 def get_tracked(request):
     serializer = TrackedCoordsSerializer(TrackedCoordinatePairs.objects.all(), many=True)
-    return HttpResponse(serializer.data)
+    return HttpResponse(json.dumps(serializer.data))
 
 
 @api_view(['GET'])
