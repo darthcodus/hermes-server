@@ -180,4 +180,6 @@ def get_graph(request):
     data = param_dict = request.query_params
     file_name = _gen_image(from_latitude, from_longitude, to_latitude, to_longitude)
     with open(file_name, "rb") as f:
-        return HttpResponse(f.read(), content_type="image/png")
+        contents = f.read()
+    os.remove(file_name)
+    return HttpResponse(contents, content_type="image/png")
