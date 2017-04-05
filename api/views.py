@@ -165,8 +165,8 @@ def _gen_image(start_lat, start_long, end_lat, end_long):
 def get_graph(request):
     data = request.query_params
 
-    from_longitude = data.get('start_latitude')
-    from_latitude = data.get('start_longitude')
+    from_longitude = data.get('start_longitude')
+    from_latitude = data.get('start_latitude')
 
     to_longitude = data.get('end_longitude')
     to_latitude = data.get('end_latitude')
